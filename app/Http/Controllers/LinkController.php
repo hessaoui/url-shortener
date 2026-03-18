@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreLinkRequest;
+use App\Http\Requests\UpdateLinkRequest;
 use App\Models\Link;
+use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Str;
 
 class LinkController extends Controller
@@ -28,28 +31,13 @@ class LinkController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreLinkRequest $request)
     {
-        $data = $request->validate([
-            'original_url' => 'required|url|max:2048',
-        ]);
+        $data = $request->validated();
 
-        $code = $this->generateUniqueCode();
-
-        $request->user()->links()->create([
-            'code' => $code,
-            'original_url' => $data['original_url'],
-        ]);
+        $this->createLinkWithUniqueCode($request, $data['original_url']);
 
         return redirect()->route('links.index')->with('status', 'Lien créé avec succès!');
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
     }
 
     /**
@@ -57,20 +45,19 @@ class LinkController extends Controller
      */
     public function edit(Link $link)
     {
-        $this->authorizeLinkOwnership($link);
+        $this->authorize('update', $link);
+
         return view('links.edit', compact('link'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Link $link)
+    public function update(UpdateLinkRequest $request, Link $link)
     {
-        $this->authorizeLinkOwnership($link);
+        $this->authorize('update', $link);
 
-        $data = $request->validate([
-            'original_url' => 'required|url|max:2048',
-        ]);
+        $data = $request->validated();
 
         $link->update($data);
 
@@ -82,16 +69,10 @@ class LinkController extends Controller
      */
     public function destroy(Link $link)
     {
-        $this->authorizeLinkOwnership($link);
+        $this->authorize('delete', $link);
         $link->delete();
-        return redirect()->route('links.index')->with('status', 'Lien supprimé avec succès !');
-    }
 
-    protected function authorizeLinkOwnership(Link $link): void
-    {
-        if ($link->user_id !== auth()->id()) {
-            abort(403, 'Unauthorized action.');
-        }
+        return redirect()->route('links.index')->with('status', 'Lien supprimé avec succès !');
     }
 
     protected function generateUniqueCode(int $length = 6): string
@@ -101,5 +82,42 @@ class LinkController extends Controller
         } while (Link::where('code', $code)->exists());
 
         return $code;
+    }
+
+    protected function createLinkWithUniqueCode(StoreLinkRequest $request, string $originalUrl, int $maxAttempts = 5): void
+    {
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            $code = $this->generateUniqueCode();
+
+            try {
+                $request->user()->links()->create([
+                    'code' => $code,
+                    'original_url' => $originalUrl,
+                ]);
+
+                return;
+            } catch (QueryException $exception) {
+                if (! $this->isUniqueCodeCollision($exception, $code) || $attempt === $maxAttempts) {
+                    throw $exception;
+                }
+            }
+        }
+    }
+
+    protected function isUniqueCodeCollision(QueryException $exception, string $code): bool
+    {
+        $sqlState = $exception->errorInfo[0] ?? null;
+
+        if ($sqlState !== '23000') {
+            return false;
+        }
+
+        return Link::where('code', $code)->exists()
+            && Str::contains($exception->getMessage(), [
+                'UNIQUE constraint failed',
+                'Duplicate entry',
+                'links.code',
+                'links_code_unique',
+            ]);
     }
 }
