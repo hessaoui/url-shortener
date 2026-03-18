@@ -57,7 +57,8 @@ class LinkController extends Controller
      */
     public function edit(Link $link)
     {
-        $this->authorizeLinkOwnership($link);
+        $this->authorize('update', $link);
+
         return view('links.edit', compact('link'));
     }
 
@@ -66,7 +67,7 @@ class LinkController extends Controller
      */
     public function update(UpdateLinkRequest $request, Link $link)
     {
-        $this->authorizeLinkOwnership($link);
+        $this->authorize('update', $link);
 
         $data = $request->validated();
 
@@ -80,16 +81,10 @@ class LinkController extends Controller
      */
     public function destroy(Link $link)
     {
-        $this->authorizeLinkOwnership($link);
+        $this->authorize('delete', $link);
         $link->delete();
-        return redirect()->route('links.index')->with('status', 'Lien supprimé avec succès !');
-    }
 
-    protected function authorizeLinkOwnership(Link $link): void
-    {
-        if ($link->user_id !== auth()->id()) {
-            abort(403, 'Unauthorized action.');
-        }
+        return redirect()->route('links.index')->with('status', 'Lien supprimé avec succès !');
     }
 
     protected function generateUniqueCode(int $length = 6): string
