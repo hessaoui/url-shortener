@@ -46,6 +46,17 @@
                                                 <a href="{{ $shortUrl }}" target="_blank" rel="noopener" class="text-indigo-600 hover:text-indigo-800 break-all">
                                                     {{ $shortUrl }}
                                                 </a>
+
+                                                <div class="mt-2">
+                                                    <button
+                                                        type="button"
+                                                        class="js-copy-short-url inline-flex items-center px-3 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                                        data-short-url="{{ $shortUrl }}"
+                                                        data-default-text="{{ __('Copy') }}"
+                                                    >
+                                                        {{ __('Copy') }}
+                                                    </button>
+                                                </div>
                                             </td>
                                             <td class="px-4 py-4 text-sm text-gray-700 align-top break-all">
                                                 {{ $link->original_url }}
