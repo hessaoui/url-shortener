@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreLinkRequest;
+use App\Http\Requests\UpdateLinkRequest;
 use App\Models\Link;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class LinkController extends Controller
@@ -28,11 +30,9 @@ class LinkController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreLinkRequest $request)
     {
-        $data = $request->validate([
-            'original_url' => 'required|url|max:2048',
-        ]);
+        $data = $request->validated();
 
         $code = $this->generateUniqueCode();
 
@@ -64,13 +64,11 @@ class LinkController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Link $link)
+    public function update(UpdateLinkRequest $request, Link $link)
     {
         $this->authorizeLinkOwnership($link);
 
-        $data = $request->validate([
-            'original_url' => 'required|url|max:2048',
-        ]);
+        $data = $request->validated();
 
         $link->update($data);
 
