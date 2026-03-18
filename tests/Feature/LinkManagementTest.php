@@ -53,6 +53,22 @@ class LinkManagementTest extends TestCase
         ]);
     }
 
+    public function test_create_short_link_requires_a_valid_url(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)
+            ->from(route('links.create'))
+            ->post(route('links.store'), [
+                'original_url' => 'not-a-valid-url',
+            ]);
+
+        $response->assertRedirect(route('links.create', absolute: false));
+        $response->assertSessionHasErrors(['original_url']);
+
+        $this->assertDatabaseCount('links', 0);
+    }
+
     public function test_authenticated_user_can_update_their_own_link(): void
     {
         $user = User::factory()->create();
@@ -72,6 +88,31 @@ class LinkManagementTest extends TestCase
         $this->assertDatabaseHas('links', [
             'id' => $link->id,
             'original_url' => 'https://example.com/new-url',
+        ]);
+    }
+
+    public function test_update_short_link_requires_a_valid_url(): void
+    {
+        $user = User::factory()->create();
+
+        $link = Link::query()->create([
+            'user_id' => $user->id,
+            'code' => 'edit02',
+            'original_url' => 'https://example.com/original-url',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->from(route('links.edit', $link))
+            ->put(route('links.update', $link), [
+                'original_url' => 'invalid-url',
+            ]);
+
+        $response->assertRedirect(route('links.edit', $link, absolute: false));
+        $response->assertSessionHasErrors(['original_url']);
+
+        $this->assertDatabaseHas('links', [
+            'id' => $link->id,
+            'original_url' => 'https://example.com/original-url',
         ]);
     }
 
